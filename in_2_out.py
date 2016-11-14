@@ -4,7 +4,6 @@ import numpy as np
 import logging
 from scipy.misc import *
 
-
 #Test sequence constants
 frame_num = 1700
 rel_path  = './input/in00%04d.jpg'
@@ -13,7 +12,7 @@ dest_path = './output/out00%04d.jpg'
 nmixtures = 10
 
 # Kernel function
-kernel_src = 'mixture-of-gaussian.cl'
+kernel_src = 'in_2_out.cl'
 
 # Get the first available graphic device. Prioritize GPU over CPU
 def device_choose():
@@ -45,9 +44,6 @@ if __name__ == "__main__":
         kernel = content_file.read()
     prg = cl.Program(ctx, kernel).build()
 
-    mixture_data_buff = np.zeros(3000000, dtype=np.float32)
-    mog_params = np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
-    alpha = 0.1
 
     for i in range(1, frame_num+1):
     	#Read in image
@@ -55,21 +51,13 @@ if __name__ == "__main__":
         img_shape = (img.shape[1], img.shape[0])
 
         f = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8)
-
         img_g = cl.image_from_array(ctx, img, 4)
         result_g = cl.Image(ctx, mf.WRITE_ONLY, f, shape=img_shape)
 
-    	#Allocate memory for variables on the device
-    	mixture_data_g = cl.Buffer(ctx, mf.COPY_HOST_PTR, hostbuf=mixture_data_buff)
-    	mog_params_g = cl.Buffer(ctx, mf.COPY_HOST_PTR, hostbuf=mog_params)
-
-    	# Call Kernel. Automatically takes care of block/grid distribution
-    	prg.mog_image(queue, img_shape, None, img_g, result_g, mixture_data_g, mog_params_g, np.float32(alpha))
+    	prg.in_2_out(queue, img_shape, None, img_g, result_g)
     	
         result = np.empty_like(img)
         cl.enqueue_copy(queue, result, result_g, origin=(0, 0), region=img_shape)
 
-
-    	# Show the blurred image
     	imsave(dest_path % i, result)
         logging.info('Iteration %d done.' % i)
