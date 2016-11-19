@@ -3,7 +3,7 @@ import pyopencl.array as cl_array
 import numpy as np
 import logging
 from scipy.misc import *
-
+from device_choose import *
 
 #Test sequence constants
 frame_num = 1700
@@ -15,25 +15,11 @@ nmixtures = 10
 # Kernel function
 kernel_src = 'test2.cl'
 
-# Get the first available graphic device. Prioritize GPU over CPU
-def device_choose():
-    preffered_device = None
-    for platform in cl.get_platforms():
-        for device in platform.get_devices():
-            device_type = cl.device_type.to_string(device.type)
-            if device_type == "GPU":
-                logging.debug(device)
-                return device
-            elif device_type == "CPU" and preffered_device == None:
-                preffered_device = device
-    logging.debug(preffered_device)
-    return preffered_device
-
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # Choose graphic device and create context for it
-    ctx = cl.Context([device_choose()])
+    ctx = cl.Context([device_choose(NVIDIA_PLATFORM, GPU_DEVICE)])
     mf  = cl.mem_flags
 
     # Create queue for each kernel execution
