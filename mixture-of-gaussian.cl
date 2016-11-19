@@ -28,8 +28,10 @@ __kernel void mog_image(
 	
 	if (!all(gid < size))
 		return;
-		
-	float pix = read_imagef(frame, smp, gid).x * 255.0f;
+	
+	float4 input = read_imagef(frame, smp, gid);
+	// rgb2grayscale
+	float pix = (input.x + input.y + input.z)/3.0f * 255.0f;
 	const int gid1 = gid.x + gid.y * size.x;
 	const int size1 = size.x * size.y;
 	int pdfMatched = -1;
@@ -149,7 +151,7 @@ __kernel void mog_image(
 	if(pdfMatched < 0)
 	{
 		float pix = 1.0f;
-		write_imagef(dst, gid, (float4) pix);
+		write_imagef(dst, gid, (float4) {pix, pix, pix, 1.0});
 		return;
 	}
 
@@ -172,7 +174,7 @@ __kernel void mog_image(
 			float pix = pdfMatched > mx 
 				? 1.0f // foreground
 				: 0.0f;  // background
-			write_imagef(dst, gid, (float4) pix);
+			write_imagef(dst, gid, (float4) {pix, pix, pix, 1.0});
 			return;
 		}
 	}
