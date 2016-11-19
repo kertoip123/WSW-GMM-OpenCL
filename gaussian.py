@@ -16,7 +16,7 @@ nmixtures = 10
 kernel_src = 'mixture-of-gaussian.cl'
 
 #choose INTEL_PLATFORM or NVIDIA_PLATFORM
-pref_platform = INTEL_PLATFORM
+pref_platform = NVIDIA_PLATFORM
 #choose GPU_DEVICE or CPU_DEVICE
 pref_device = GPU_DEVICE 
 
