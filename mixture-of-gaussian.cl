@@ -13,7 +13,7 @@ typedef struct MogParams
 } MogParams;
 
 #ifndef nmixtures 
-#define nmixtures 10
+#define nmixtures 5
 #endif
 
 __kernel void mog_image(

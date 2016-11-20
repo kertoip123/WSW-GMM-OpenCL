@@ -2,6 +2,7 @@ import pyopencl as cl
 import pyopencl.array as cl_array
 import numpy as np
 import logging
+import cv2
 from scipy.misc import *
 from device_choose import *
 
@@ -37,28 +38,29 @@ if __name__ == "__main__":
 
     f = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNORM_INT8)
 
-    for i in range(1, 2):
+    cap = cv2.VideoCapture(0)
+    
+    while(True):
     	#Read in image
-    	img = imread(rel_path % i, flatten=False, mode = 'RGBA')
-        print img
-        #img2 = imread(rel_path % i, flatten=False, mode = 'L')
-        #for x,y in zip(img, img2):
-        #    for w,z in zip(x,y):
-        #        w[0] = z
+    	#img = imread(rel_path % i, flatten=False, mode = 'RGBA')
+        ret, frame = cap.read()
+        if ret:
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+            img_shape = (img.shape[1], img.shape[0])
 
-        img_shape = (img.shape[1], img.shape[0])
+            img_g = cl.image_from_array(ctx, img, 4, mode = 'r', norm_int = True)
+            result_g = cl.Image(ctx, mf.WRITE_ONLY, f, shape=img_shape)
 
-        img_g = cl.image_from_array(ctx, img, 4, mode = 'r', norm_int = True)
-        result_g = cl.Image(ctx, mf.WRITE_ONLY, f, shape=img_shape)
+            # Call Kernel. Automatically takes care of block/grid distribution
+            prg.test(queue, img_shape, None, img_g, result_g, params_g)
+            
+            result = np.empty_like(img)
+            cl.enqueue_copy(queue, result, result_g, origin=(0, 0), region=img_shape)
+            
+            cv2.imshow('output', result)
+            
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    	# Call Kernel. Automatically takes care of block/grid distribution
-    	prg.test(queue, img_shape, None, img_g, result_g, params_g)
-    	
-        result = np.empty_like(img)
-        cl.enqueue_copy(queue, result, result_g, origin=(0, 0), region=img_shape)
-
-        print result
-
-    	# Show the blurred image
-    	imsave(dest_path % i, result)
-        logging.info('Iteration %d done.' % i)
+    cap.release()
+    cv2.destroyAllWindows()
