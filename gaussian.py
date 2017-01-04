@@ -2,15 +2,18 @@ import pyopencl as cl
 import pyopencl.array as cl_array
 import numpy as np
 import logging
+import time
 from scipy.misc import *
 from device_choose import *
 
 #Test sequence constants
-frame_num = 1700
-rel_path  = './input/in00%04d.jpg'
-dest_path = './output/out00%04d.jpg' 
+sequence_name = 'highway'
+frame_num = 1200
 
-nmixtures = 10
+rel_path  = './input/' + sequence_name + '/in00%04d.jpg'
+dest_path = './output/' + sequence_name + '/out00%04d.jpg' 
+
+nmixtures = 5
 
 # Kernel function
 kernel_src = 'mixture-of-gaussian.cl'
@@ -36,7 +39,7 @@ if __name__ == "__main__":
         kernel = content_file.read()
     prg = cl.Program(ctx, kernel).build()
 
-    mixture_data_buff = np.zeros(3000000, dtype=np.float32)
+    mixture_data_buff = np.zeros(13000000, dtype=np.float32)
     params_list = [2.5, 0.5, 0.02, 75.0, 25.0]
     mog_params = np.array(params_list, dtype=np.float32)
     alpha = 0.1
@@ -46,6 +49,8 @@ if __name__ == "__main__":
 	#Allocate memory for variables on the device
     mixture_data_g = cl.Buffer(ctx, mf.COPY_HOST_PTR, hostbuf=mixture_data_buff)
     mog_params_g = cl.Buffer(ctx, mf.COPY_HOST_PTR, hostbuf=mog_params)
+    
+    time_begin = time.time()
     
     for i in range(1, frame_num+1):
     	#Read in image
@@ -63,4 +68,8 @@ if __name__ == "__main__":
 		
     	# Show out image
         imsave(dest_path % i, result)
-        logging.info('Iteration %d done.' % i)
+        #logging.debug('Iteration %d done.' % i)
+    
+    time_end = time.time()
+    avg_fps = frame_num/(time_end - time_begin)
+    logging.info('Average fps: %.1f' % avg_fps)
