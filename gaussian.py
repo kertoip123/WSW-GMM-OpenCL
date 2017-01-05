@@ -3,6 +3,8 @@ import pyopencl.array as cl_array
 import numpy as np
 import logging
 import time
+import cv2
+from performance import *
 from scipy.misc import *
 from device_choose import *
 
@@ -11,6 +13,7 @@ sequence_name = 'highway'
 frame_num = 1200
 
 rel_path  = './input/' + sequence_name + '/in00%04d.jpg'
+gt_rel_path = './gt/' + sequence_name + '/gt00%04d.png'
 dest_path = './output/' + sequence_name + '/out00%04d.jpg' 
 
 nmixtures = 5
@@ -22,6 +25,8 @@ kernel_src = 'mixture-of-gaussian.cl'
 pref_platform = NVIDIA_PLATFORM
 #choose GPU_DEVICE or CPU_DEVICE
 pref_device = GPU_DEVICE 
+
+compute_performance = False
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -52,6 +57,8 @@ if __name__ == "__main__":
     
     time_begin = time.time()
     
+    performance = Performance(sequence_name)
+    
     for i in range(1, frame_num+1):
     	#Read in image
         img = imread(rel_path % i, flatten=False, mode = 'RGBA')
@@ -66,10 +73,21 @@ if __name__ == "__main__":
         result = np.empty_like(img)
         cl.enqueue_copy(queue, result, result_g, origin=(0, 0), region=img_shape)
 		
-    	# Show out image
-        imsave(dest_path % i, result)
-        #logging.debug('Iteration %d done.' % i)
+        if compute_performance:
+            gt_img = cv2.imread(gt_rel_path % i, cv2.IMREAD_GRAYSCALE)
+            performance.update(cv2.cvtColor(result, cv2.COLOR_BGRA2GRAY), gt_img)
+        
+        # Show out image
+        imsave(dest_path % i, cv2.cvtColor(result, cv2.COLOR_BGRA2GRAY))
+        #logging.debug('Iteration %d done.' % i)      
+        cv2.imshow('GMM', result)
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
     
     time_end = time.time()
     avg_fps = frame_num/(time_end - time_begin)
     logging.info('Average fps: %.1f' % avg_fps)
+    if compute_performance:
+        logging.info(performance)
