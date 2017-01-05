@@ -3,6 +3,7 @@ import pyopencl.array as cl_array
 import numpy as np
 import logging
 import cv2
+import time
 from scipy.misc import *
 from device_choose import *
 
@@ -46,6 +47,9 @@ if __name__ == "__main__":
     
     cap = cv2.VideoCapture(camera)
     
+    time_begin = time.time()
+    cnt = 0
+    
     while(True):
     	#Read in image
         ret, frame = cap.read()
@@ -63,6 +67,15 @@ if __name__ == "__main__":
             cl.enqueue_copy(queue, result, result_g, origin=(0, 0), region=img_shape)
             
             cv2.imshow('output', result)
+            
+            time_current = time.time()
+            if time_current-time_begin >= 5:
+                avg_fps = cnt/(time_current - time_begin)
+                time_begin = time_current
+                cnt = 0
+                logging.info('Average fps: %.1f' % avg_fps)
+            else:
+                cnt += 1
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
