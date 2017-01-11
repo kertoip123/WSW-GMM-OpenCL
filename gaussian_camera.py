@@ -9,14 +9,23 @@ from device_choose import *
 
 #default camera
 camera = 0
+resolution = 640*480
 
-# Kernel function
-kernel_src = 'mixture-of-gaussian.cl'
+nmixtures = 5
+alpha = 0.1
+k = 2.5
+T = 0.4
+init_var = 15.0
+min_var = 0.0
 
 #choose INTEL_PLATFORM or NVIDIA_PLATFORM
 pref_platform = NVIDIA_PLATFORM
 #choose GPU_DEVICE or CPU_DEVICE
 pref_device = GPU_DEVICE 
+
+# Kernel function
+kernel_src = 'mixture-of-gaussian.cl'
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -34,10 +43,13 @@ if __name__ == "__main__":
         kernel = content_file.read()
     prg = cl.Program(ctx, kernel).build()
 
-    mixture_data_buff = np.zeros(10000000, dtype=np.float32)
-    params_list = [2.5, 0.5, 0.02, 75.0, 25.0]
+    mixture_data_buff = np.zeros(3*nmixtures*resolution, dtype=np.float32)
+    mixture_data_buff[0:resolution*nmixtures] = 1.0/nmixtures/10
+    mixture_data_buff[resolution*nmixtures+1:2*resolution*nmixtures] = init_var
+    
+    params_list = [k, T, init_var, min_var]
     mog_params = np.array(params_list, dtype=np.float32)
-    alpha = 0.1
+    
 
     f = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNORM_INT8)
 	

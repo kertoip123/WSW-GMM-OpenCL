@@ -7,7 +7,7 @@ typedef struct MogParams
 {
 	float varThreshold;
 	float backgroundRatio;
-	float w0; // waga dla nowej mikstury
+	//float w0; // waga dla nowej mikstury
 	float var0; // wariancja dla nowej mikstury
 	float minVar; // dolny prog mozliwej wariancji
 } MogParams;
@@ -51,13 +51,10 @@ __kernel void mog_image(
 		if(pdfMatched < 0)
 		{
 			float diff = pix - mean[mx];
-			float d2 = diff*diff;
+			float d2 = native_sqrt(diff*diff);
+            //float d2 = diff*diff;
 			float threshold = params->varThreshold * var[mx];
 		
-			// To samo co:
-			// if (diff > -2.5f * var && 
-			//     diff < +2.5f * var)
-
 			// Mahalanobis distance
 			if(d2 < threshold)
 				pdfMatched = mx;
@@ -69,8 +66,18 @@ __kernel void mog_image(
 		// No matching mixture found - replace the weakest one
 		pdfMatched = nmixtures - 1; 
 
-		weight[pdfMatched] = params->w0;
+		//weight[pdfMatched] = params->w0;
 		mean[pdfMatched] = pix;
+
+       
+        #pragma unroll nmixtures
+		for(int mx = 1; mx < nmixtures-1; ++mx)
+		{
+            if (var[mx] > var[pdfMatched])
+            {
+                var[pdfMatched] = var[mx];
+            }
+        }
 		var[pdfMatched] = params->var0;
 	}
 	else
@@ -83,7 +90,8 @@ __kernel void mog_image(
 				float diff = pix - mean[mx];
 
 				#define PI_MULT_2 6.28318530717958647692f
-				float rho = alpha / native_sqrt(PI_MULT_2 * var[mx]) * native_exp(-0.5f * diff*diff / var[mx]);
+				//#define PI_MULT_2 247.673152
+                float rho = alpha / native_sqrt(PI_MULT_2 * var[mx]) * native_exp(-0.5f * diff*diff / var[mx]);
 
 				weight[mx] = weight[mx] + alpha * (1 - weight[mx]);
 				mean[mx] = mean[mx] + rho * diff;
@@ -110,7 +118,7 @@ __kernel void mog_image(
 	#pragma unroll nmixtures
 	for(int mx = 0; mx < nmixtures; ++mx)
 	{
-		weight[mx] *= invSum;
+		//weight[mx] *= invSum;
 		sortKey[mx] = var[mx] > FLT_MIN
 			? weight[mx] / native_sqrt(var[mx])
 			: 0;
